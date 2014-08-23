@@ -45,20 +45,35 @@ class App(object):
         :param kwargs:
         :return:
         """
-        handlers = sum(map(methodcaller('as_handlers'), self.groups))
+        handlers = sum(map(methodcaller('as_handlers'), self.groups), [])
+        handlers = [h.compile() for h in handlers]
 
-        def disspatcher(request):
+        def dispatcher(request):
             h, *_ = dropwhile(lambda x: x.regexp.match(request.method) is None, handlers)
             return h
 
+        @asyncio.coroutine
+        def serve(host="0.0.0.0", port=8080, **kwargs):
+            return (yield from asyncio.get_event_loop().create_server(lambda: HttpRequestHandler(dispatcher),
+                                                                                                 host,
+                                                                                                 port,
+                                                                                                 **kwargs))
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(serve())
+        loop.run_forever()
+
 
 class HttpRequestHandler(aiohttp.server.ServerHttpProtocol):
+
+    def __init__(self, dispatcher=None, **kwargs):
+        self.dispatcher = dispatcher
+        super().__init__(**kwargs)
 
     @asyncio.coroutine
     def handle_request(self, request, payload):
         response = aiohttp.Response(self.writer, 200, http_version=request.version)
 
-        handler = None
+        handler = self.dispatcher(request)
         request.payload = lambda *a: (yield from payload.read())
         request.query = MultiDict(parse_qsl(urlparse(request.path).query))
         handler.initialize_request(request)

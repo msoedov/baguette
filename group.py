@@ -15,6 +15,7 @@ class Route(object):
             raise ValueError('Already compiled')
         self.regexp = re.compile(self.regexp)
         self.compiled = True
+        return self
 
     def use(self, *mw):
         self.uses.extend(mw)
