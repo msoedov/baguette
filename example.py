@@ -1,4 +1,14 @@
+import asyncio
 from app import App
+from controller import Controller
+
+
+class Example(Controller):
+
+    @asyncio.coroutine
+    def get(self, request, **kw):
+        json = request.data
+        return {}
 
 app = App()
 
