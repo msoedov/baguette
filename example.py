@@ -1,14 +1,13 @@
 import asyncio
-from .app import App
-from .controller import Controller
-from .middlewares import JsonMiddleware
+from app import App
+from controller import Controller
+from middlewares import JsonMiddleware
 
 
 class Example(Controller):
 
     @asyncio.coroutine
     def get(self, request, **kw):
-        json = request.data
         return {}
 
 app = App()
@@ -24,9 +23,13 @@ app = App()
 #           ('POST', '/hello/{name}', say_hello)
 #         ).use(CorsMiddlevare)#
 
-app.group('/v1/api',
-          ('/hello/{name}', lambda: ""),
-          ('/hello/{name}', lambda: "")
+app.group('/',
+          ('', Example)
           ).use(JsonMiddleware())
+
+# app.group('/v1/api',
+#           ('/hello/{name}', lambda: ""),
+#           ('/hello/{name}', lambda: "")
+#           ).use(JsonMiddleware())
 
 app.run()

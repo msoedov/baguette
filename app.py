@@ -5,7 +5,7 @@ from urllib.parse import urlparse, parse_qsl
 from aiohttp.multidict import MultiDict
 from operator import methodcaller
 from itertools import dropwhile
-from .group import Group
+from group import Group
 
 
 class App(object):
@@ -49,7 +49,7 @@ class App(object):
         handlers = [h.compile() for h in handlers]
 
         def dispatcher(request):
-            h, *_ = dropwhile(lambda x: x.regexp.match(request.method) is None, handlers)
+            h, *_ = dropwhile(lambda x: x.regexp.match(request.path) is None, handlers)
             return h
 
         @asyncio.coroutine
@@ -73,15 +73,17 @@ class HttpRequestHandler(aiohttp.server.ServerHttpProtocol):
     def handle_request(self, request, payload):
         response = aiohttp.Response(self.writer, 200, http_version=request.version)
 
-        handler = self.dispatcher(request)
-        request.payload = yield from payload.read()
-        request.query = MultiDict(parse_qsl(urlparse(request.path).query))
-        [u.initialize_request(request) for u in handler.uses]
+        route = self.dispatcher(request)
+        handler = route.fn()
+        if request.method in ("POST", "PUT"):
+            request.payload = yield from payload.read()
+        # request.query = MultiDict(parse_qsl(urlparse(request.path).query))
+        [u.initialize_request(request) for u in route.uses]
         handler.initialize_request(request)
         results = yield from getattr(handler, request.method.lower())(request)
         response.data = results
         handler.finalize_response(request, response)
-        [u.finalize_response(request, response) for u in handler.uses]
+        [u.finalize_response(request, response) for u in route.uses]
         response.send_headers()
         response.write(response.data)
         yield from response.write_eof()
