@@ -5,7 +5,7 @@ from urllib.parse import urlparse, parse_qsl
 from aiohttp.multidict import MultiDict
 from operator import methodcaller
 from itertools import dropwhile
-from group import Group
+from .group import Group
 
 
 class App(object):
@@ -74,7 +74,7 @@ class HttpRequestHandler(aiohttp.server.ServerHttpProtocol):
         response = aiohttp.Response(self.writer, 200, http_version=request.version)
 
         handler = self.dispatcher(request)
-        request.payload = lambda *a: (yield from payload.read())
+        request.payload = yield from payload.read()
         request.query = MultiDict(parse_qsl(urlparse(request.path).query))
         handler.initialize_request(request)
         results = yield from getattr(handler, request.method.lower())(request)

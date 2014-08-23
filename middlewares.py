@@ -1,14 +1,18 @@
-class BaseMiddleware(object):
+import json
+import aiohttp.errors
+
+
+class JsonMiddleware(object):
 
     def initialize_request(self, request):
-        """
-        :param request:
-        :return:
-        """
+        if request.headers.get('Content-Type', '') != 'application/json':
+            raise aiohttp.errors.HttpException(415, 'Unsupported Media Type')
+        try:
+            request.data = json.loads(request.payload)
+        except Exception:
+            raise aiohttp.errors.HttpBadRequest()
 
     def finalize_response(self, request, response):
-        """
-        :param request:
-        :param response:
-        :return:
-        """
+        response.data = json.dumps(response.data)
+        response.add_header('Content-Type', 'application/json')
+        response.add_header('Content-Length', len(response.data))

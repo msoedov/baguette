@@ -1,6 +1,7 @@
 import asyncio
-from app import App
-from controller import Controller
+from .app import App
+from .controller import Controller
+from .middlewares import JsonMiddleware
 
 
 class Example(Controller):
@@ -26,6 +27,6 @@ app = App()
 app.group('/v1/api',
           ('/hello/{name}', lambda: ""),
           ('/hello/{name}', lambda: "")
-          )
+          ).use(JsonMiddleware())
 
 app.run()
