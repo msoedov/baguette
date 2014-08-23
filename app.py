@@ -76,10 +76,12 @@ class HttpRequestHandler(aiohttp.server.ServerHttpProtocol):
         handler = self.dispatcher(request)
         request.payload = lambda *a: (yield from payload.read())
         request.query = MultiDict(parse_qsl(urlparse(request.path).query))
+        [u.initialize_request(request) for u in handler.uses]
         handler.initialize_request(request)
         results = yield from getattr(handler, request.method.lower())(request)
         response.data = results
         handler.finalize_response(request, response)
+        [u.finalize_response(request, response) for u in handler.uses]
         response.send_headers()
         response.write(response.data)
         yield from response.write_eof()
