@@ -1,4 +1,5 @@
 import asyncio
+from errors import ApiError
 
 
 class ControllerType(type):
@@ -6,12 +7,15 @@ class ControllerType(type):
 
     def __new__(metacls, *args, **kwargs):
         cls = super().__new__(metacls, *args, **kwargs)
+        cls.allowed_methods = []
         for name in metacls.http_method_names:
             handler = getattr(cls, name, None)
-            if handler and not asyncio.iscoroutinefunction(handler):
-                raise ReferenceError('Method {}.{}.{} should be coroutine'.format(cls.__module__,
-                                                                                  cls.__name__,
-                                                                                  name))
+            if handler:
+                cls.allowed_methods.append(name)
+                if not asyncio.iscoroutinefunction(handler):
+                    raise TypeError('Method {}.{}.{} should be coroutine'.format(cls.__module__,
+                                                                                 cls.__name__,
+                                                                                 name))
         return cls
 
 
@@ -30,3 +34,6 @@ class Controller(object, metaclass=ControllerType):
         :param response:
         :return:
         """
+
+    def not_allowed(cls, *a):
+        raise ApiError(405, {'allowed methods': cls.allowed_methods})
