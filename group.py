@@ -13,7 +13,7 @@ class Route(object):
     def compile(self):
         if self.compiled:
             raise ValueError('Already compiled')
-        self.regexp = re.compile(self.regexp)
+        self.regexp = re.compile(self.regexp + '$')
         self.compiled = True
         return self
 
