@@ -62,3 +62,6 @@ class Group(object):
                 rs = h.prepend(to_use).as_handlers()
                 as_result.extend(rs)
         return as_result
+
+
+EmptyRoute = Route('', lambda: None)
