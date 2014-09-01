@@ -1,10 +1,12 @@
 import asyncio
 from app import App
 from controller import Controller
-from middlewares import JsonMiddleware
+from generics import JsonAPI
+from errors import ApiError
+from middlewares import LoggerMiddleware, BasicAuthMiddleware
 
 
-class Example(Controller):
+class Example(JsonAPI):
 
     @asyncio.coroutine
     def get(self, request, **kw):
@@ -17,15 +19,15 @@ app = App()
 # db = NewDatabasePool()
 # app.map(db)
 
-
+#
 # app.group('/v1/api',
 #           ('GET', '/hello/{name}', say_hello),
 #           ('POST', '/hello/{name}', say_hello)
-#         ).use(CorsMiddlevare)#
+#           ).use(JsonAPI)
 
 app.group('/',
           ('', Example)
-          ).use(JsonMiddleware())
+          ).use(LoggerMiddleware(), BasicAuthMiddleware({'admin': 'admin'}))
 
 # app.group('/v1/api',
 #           ('/hello/{name}', lambda: ""),
