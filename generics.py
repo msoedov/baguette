@@ -5,7 +5,8 @@ from parsers import JSONParser
 
 class JsonAPI(Controller):
 
-    def initialize_request(self, request):
+    def initialize_request(self, context):
+        request = context.request
         if request.method not in ("POST", "PUT"):
             return
         if request.headers.get('Content-Type', '') != 'application/json':
@@ -15,7 +16,6 @@ class JsonAPI(Controller):
         except Exception as e:
             raise errors.ApiError(400, str(e))
 
-    def finalize_response(self, request, response):
-        response.data = JSONParser.render(response.data)
-        response.add_header('Content-Type', 'application/json')
-        response.add_header('Content-Length', str(len(response.data)))
+    def finalize_response(self, context):
+        context.apply(JSONParser.render)
+        context.response.add_header('Content-Type', 'application/json')

@@ -11,14 +11,15 @@ class LoggerMiddleware(object):
     FAIL = '\033[91m'
     ENDC = '\033[0m'
 
-    def initialize_request(self, request):
+    def initialize_request(self, context):
         self.st = time.time()
 
-    def finalize_response(self, request, response):
+    def finalize_response(self, context):
         dt = time.time() - self.st
         dt *= 1000
+        request, response = context.request, context.response
         collor = self.OKGREEN if response.status < 400 else self.FAIL
-        logger.warn('{} {} {}|{}|{} completed in {:1.1f}ms'.format(request.method,
+        logger.warn('{} {} {}|{}|{} completed in {:1.2f}ms'.format(request.method,
                                                                    request.path,
                                                                    collor,
                                                                    response.status,
@@ -32,7 +33,8 @@ class BasicAuthMiddleware(object):
     def __init__(self, auth_source):
         self.auth_source = auth_source
 
-    def initialize_request(self, request):
+    def initialize_request(self, context):
+        request = context.request
         val = request.headers.get('AUTHORIZATION', '')
         if not val:
             return self.fail('Auth required')
@@ -50,6 +52,6 @@ class BasicAuthMiddleware(object):
     def fail(self, msg):
         raise ApiError(401, msg)
 
-    def finalize_response(self, request, response):
+    def finalize_response(self, context):
         """
         """

@@ -9,8 +9,23 @@ from middlewares import LoggerMiddleware, BasicAuthMiddleware
 class Example(JsonAPI):
 
     @asyncio.coroutine
-    def get(self, request, **kw):
+    def get(self, context):
         return {}
+
+
+class Hello(JsonAPI):
+
+    @asyncio.coroutine
+    def get(self, context):
+        return 'Hello'
+
+
+class Bye(JsonAPI):
+
+    @asyncio.coroutine
+    def get(self, context):
+        return 'Bye'
+
 
 app = App()
 
@@ -20,10 +35,10 @@ app = App()
 # app.map(db)
 
 #
-# app.group('/v1/api',
-#           ('GET', '/hello/{name}', say_hello),
-#           ('POST', '/hello/{name}', say_hello)
-#           ).use(JsonAPI)
+app.group('/v1/api',
+          ('/hello/', Hello),
+          ('/bye', Bye.params(foo='bar'))
+          ).use(LoggerMiddleware())
 
 app.group('/',
           ('', Example)

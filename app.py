@@ -1,16 +1,16 @@
+import os
 import asyncio
 import aiohttp.server
 
-from urllib.parse import urlparse, parse_qsl
-from aiohttp.multidict import MultiDict
 from operator import methodcaller
 from itertools import dropwhile
 from group import Group, EmptyRoute
 from parsers import JSONParser
+from context import Context, Response
 from errors import ApiError
 import logging
 
-loger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class App(object):
@@ -54,14 +54,17 @@ class App(object):
         handlers = sum(map(methodcaller('as_handlers'), self.groups), [])
         handlers = [h.compile() for h in handlers]
 
-        def dispatcher(request):
+        def dispatcher(path):
             for handler in handlers:
-                if handler.regexp.match(request.path) is not None:
+                if handler.regexp.match(path) is not None:
                     return handler
             raise ApiError(404, 'Not found')
 
+        host = os.environ.get('HOST', '0.0.0.0')
+        port = int(os.environ.get('PORT', 8080))
+
         @asyncio.coroutine
-        def serve(host="0.0.0.0", port=8080, **kwargs):
+        def serve():
             return (yield from asyncio.get_event_loop().create_server(lambda: HttpRequestHandler(dispatcher),
                                                                                                  host,
                                                                                                  port,
@@ -81,22 +84,18 @@ class HttpRequestHandler(aiohttp.server.ServerHttpProtocol):
 
     @asyncio.coroutine
     def handle_request(self, request, payload):
-        response = aiohttp.Response(self.writer, 200, http_version=request.version)
+        response = Response(self.writer, 200, http_version=request.version)
 
-        self.route = self.dispatcher(request)
+        self.route = self.dispatcher(request.path)
         handler = self.route.fn()
-        if request.method in ("POST", "PUT"):
-            request.payload = yield from payload.read()
-        # request.query = MultiDict(parse_qsl(urlparse(request.path).query))
-        [u.initialize_request(request) for u in self.route.uses]
-        handler.initialize_request(request)
-        results = yield from getattr(handler, request.method.lower(), handler.not_allowed)(request)
-        response.data = results
-        handler.finalize_response(request, response)
-        [u.finalize_response(request, response) for u in self.route.uses]
-        response.send_headers()
-        response.write(response.data)
-        yield from response.write_eof()
+        context = Context(request=request, response=response, payload=payload)
+        [u.initialize_request(context) for u in self.route.uses]
+        handler.initialize_request(context)
+        results = yield from getattr(handler, request.method.lower(), handler.not_allowed)(context)
+        context.content = results
+        handler.finalize_response(context)
+        [u.finalize_response(context) for u in self.route.uses]
+        yield from context.write()
 
     def handle_error(self, status=500, message=None, payload=None, exc=None, headers=None):
         try:
@@ -106,7 +105,7 @@ class HttpRequestHandler(aiohttp.server.ServerHttpProtocol):
             else:
                 details = 'Something went wrong'
                 status = 500
-                loger.exception(details)
+                logger.exception(details)
             r = aiohttp.Response(self.writer, status, close=True)
             details = self.default_renderer.render({'message': details,
                                                     'path': message.path,
@@ -115,8 +114,8 @@ class HttpRequestHandler(aiohttp.server.ServerHttpProtocol):
             r.add_header('Content-Length', '%s' % len(details))
             r.send_headers()
             r.write(details)
-            [u.finalize_response(message, r) for u in self.route.uses]
+            # [u.finalize_response() for u in self.route.uses]
             r.write_eof()
             self.keep_alive(False)
         except Exception as e:
-            loger.exception('')
+            logger.exception('Oups')

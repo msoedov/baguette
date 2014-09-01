@@ -21,19 +21,22 @@ class ControllerType(type):
 
 class Controller(object, metaclass=ControllerType):
 
-    def initialize_request(self, request):
+    def initialize_request(self, context):
+        """
         """
 
-        :param request:
-        :return:
+    def finalize_response(self, context):
         """
-
-    def finalize_response(self, request, response):
-        """
-        :param request:
-        :param response:
-        :return:
         """
 
     def not_allowed(cls, *a):
         raise ApiError(405, {'allowed methods': cls.allowed_methods})
+
+    @classmethod
+    def params(cls, **kwargs):
+        def init():
+            val = cls()
+            for attr, v in kwargs.items():
+                setattr(val, attr, v)
+            return val
+        return init
